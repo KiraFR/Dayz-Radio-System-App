@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   test:
     name: Test
@@ -74,6 +77,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
@@ -85,12 +91,66 @@ jobs:
         id: package_version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          VERSION="v${{ steps.package_version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          VERSION="v${{ steps.package_version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -20)
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)")
+          fi
+          
+          # Create release notes
+          cat << EOF > release_notes.md
+          ## Radio VoIP DayZ v${{ steps.package_version.outputs.version }}
+          
+          ### Installation
+          1. Download \`RadioVoIP-DayZ.exe\` below
+          2. Run the executable (portable, no installation required)
+          3. Join a DayZ server that supports Radio VoIP
+          
+          ### Changes
+          ${COMMITS:-No changes recorded}
+          
+          ### Requirements
+          - Windows 10/11
+          - DayZ with Radio VoIP mod
+          
+          ---
+          *Built automatically from main branch*
+          EOF
+          
+          echo "Generated release notes:"
+          cat release_notes.md
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.package_version.outputs.version }}
           name: Release v${{ steps.package_version.outputs.version }}
+          body_path: release_notes.md
           draft: true
           files: dist/RadioVoIP-DayZ.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
