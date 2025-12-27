@@ -68,9 +68,33 @@ jobs:
           path: dist/RadioVoIP-DayZ.exe
           retention-days: 30
 
+  virus-scan:
+    name: Virus Scan
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RadioVoIP-DayZ-Windows
+          path: dist/
+
+      - name: Scan with VirusTotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          files: |
+            dist/RadioVoIP-DayZ.exe
+
+      - name: Check scan results
+        run: |
+          echo "VirusTotal scan completed."
+          echo "Check the VirusTotal link in the action output for detailed results."
+
   release:
     name: Release
-    needs: build
+    needs: [build, virus-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 

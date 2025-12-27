@@ -1,8 +1,8 @@
 {
   "name": "radio-voip-electron",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Electron shell for Radio VoIP DayZ",
-  "author": "Stalker NoName",
+  "author": "Kira",
   "main": "src/main/index.cjs",
   "scripts": {
     "dev": "electron .",
