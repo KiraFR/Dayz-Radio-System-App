@@ -7,11 +7,15 @@
   "scripts": {
     "dev": "electron .",
     "build": "electron-builder",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "jest": "^29.7.0"
   },
   "build": {
     "appId": "com.dayz.radio-voip",
@@ -22,7 +26,10 @@
     "files": [
       "**/*",
       "!node_modules",
-      "!dist"
+      "!dist",
+      "!__tests__",
+      "!coverage",
+      "!*.test.js"
     ],
     "win": {
       "target": "portable",
@@ -31,5 +38,16 @@
     "portable": {
       "artifactName": "RadioVoIP-DayZ.exe"
     }
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.js"],
+    "collectCoverageFrom": [
+      "*.cjs",
+      "*.js",
+      "!titlebar.js"
+    ],
+    "coverageDirectory": "coverage",
+    "verbose": true
   }
 }
