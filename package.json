@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "description": "Electron shell for Radio VoIP DayZ",
   "author": "Stalker NoName",
-  "main": "main.cjs",
+  "main": "src/main/index.cjs",
   "scripts": {
     "dev": "electron .",
     "build": "electron-builder",
@@ -24,16 +24,20 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!node_modules",
-      "!dist",
-      "!__tests__",
-      "!coverage",
-      "!*.test.js"
+      "src/**/*",
+      "assets/**/*",
+      ".env",
+      "!**/*.test.js"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
     ],
     "win": {
       "target": "portable",
-      "icon": "icon.ico"
+      "icon": "assets/icon.ico"
     },
     "portable": {
       "artifactName": "RadioVoIP-DayZ.exe"
@@ -41,11 +45,10 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.js"],
+    "testMatch": ["**/tests/**/*.test.js"],
     "collectCoverageFrom": [
-      "*.cjs",
-      "*.js",
-      "!titlebar.js"
+      "src/**/*.cjs",
+      "src/**/*.js"
     ],
     "coverageDirectory": "coverage",
     "verbose": true

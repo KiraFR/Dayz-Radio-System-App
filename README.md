@@ -53,13 +53,22 @@ Radio VoIP DayZ is a companion app that adds realistic radio communication to yo
 
 ```
 RadioSystemElectronApp/
-├── main.cjs          # Electron main process + HTTP server
-├── preload.cjs       # Context bridge & titlebar injection
-├── waiting.html      # Waiting page (shown before connection)
-├── titlebar.js       # Custom titlebar component
-├── titlebar.css      # Titlebar styles
-├── icon.ico          # Application icon
-└── package.json      # Dependencies & build config
+├── src/
+│   ├── main/              # Electron main process
+│   │   ├── index.cjs      # Entry point + HTTP server
+│   │   ├── httpServer.cjs # HTTP utilities
+│   │   └── config.cjs     # Configuration utilities
+│   ├── preload/           # Preload scripts
+│   │   └── index.cjs      # Context bridge & IPC
+│   └── renderer/          # UI/Frontend
+│       ├── waiting.html   # Waiting page
+│       ├── titlebar.js    # Custom titlebar
+│       └── titlebar.css   # Titlebar styles
+├── tests/                 # Unit & integration tests
+├── assets/                # Static resources
+│   └── icon.ico
+├── .github/workflows/     # CI/CD
+└── package.json
 ```
 
 ### Architecture
@@ -157,6 +166,14 @@ electronAPI.isElectron  // true
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
+
+## Contributors
+
+<a href="https://github.com/KiraFR">
+  <img src="https://github.com/KiraFR.png" width="50" height="50" alt="KiraFR" style="border-radius: 50%;" />
+</a>
+
+**[KiraFR](https://github.com/KiraFR)** - Creator & Maintainer
 
 ## Contributing
 

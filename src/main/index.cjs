@@ -3,7 +3,7 @@ const path = require("path");
 const http = require("http");
 
 // Import modules
-const { loadEnvFile, applyEnv, saveConfig, getDefaultConfigPath } = require("./lib/config.cjs");
+const { loadEnvFile, applyEnv, saveConfig, getDefaultConfigPath } = require("./config.cjs");
 const {
 	findFreePort,
 	parseJSONBody,
@@ -12,10 +12,10 @@ const {
 	setCORSHeaders,
 	sendJSON,
 	getConnectionStatus
-} = require("./lib/httpServer.cjs");
+} = require("./httpServer.cjs");
 
 // Charger le fichier .env
-const envPath = path.join(__dirname, ".env");
+const envPath = path.join(__dirname, "../../.env");
 const envVars = loadEnvFile(envPath);
 applyEnv(envVars);
 
@@ -51,7 +51,7 @@ function disconnect(reason) {
 	
 	// Revenir à la page d'attente
 	if (mainWindow) {
-		mainWindow.loadFile(path.join(__dirname, "waiting.html"));
+		mainWindow.loadFile(path.join(__dirname, "../renderer/waiting.html"));
 	}
 }
 
@@ -281,7 +281,7 @@ function createWindow() {
 		frame: false,
 		titleBarStyle: "hidden",
 		webPreferences: {
-			preload: path.join(__dirname, "preload.cjs"),
+			preload: path.join(__dirname, "../preload/index.cjs"),
 			contextIsolation: true,
 			nodeIntegration: false,
 			devTools: isDev,
@@ -296,7 +296,7 @@ function createWindow() {
 	} else if (serverURL) {
 		mainWindow.loadURL(serverURL);
 	} else {
-		mainWindow.loadFile(path.join(__dirname, "waiting.html"));
+		mainWindow.loadFile(path.join(__dirname, "../renderer/waiting.html"));
 	}
 
 	mainWindow.webContents.on("did-finish-load", () => {

@@ -13,7 +13,7 @@ const {
     sendJSON,
     getConnectionStatus,
     createRequestHandler
-} = require("../lib/httpServer.cjs");
+} = require("../src/main/httpServer.cjs");
 
 // Mock HTTP response
 function createMockResponse() {

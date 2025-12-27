@@ -4,7 +4,7 @@
  */
 
 const http = require("http");
-const { createRequestHandler, findFreePort } = require("../lib/httpServer.cjs");
+const { createRequestHandler, findFreePort } = require("../src/main/httpServer.cjs");
 
 // Helper to make HTTP requests
 function makeRequest(port, method, path, body = null) {

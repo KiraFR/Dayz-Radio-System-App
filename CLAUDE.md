@@ -15,23 +15,31 @@
 
 ```
 RadioSystemElectronApp/
-├── main.cjs              # Electron main process + HTTP server
-├── preload.cjs           # Context bridge & titlebar injection
-├── waiting.html          # Waiting page (before connection)
-├── titlebar.js           # Custom titlebar component
-├── titlebar.css          # Titlebar styles
-├── lib/
-│   ├── httpServer.cjs    # HTTP server utilities (testable)
-│   └── config.cjs        # Configuration utilities (testable)
-├── __tests__/
+├── src/
+│   ├── main/                  # Electron main process
+│   │   ├── index.cjs          # Entry point + HTTP server
+│   │   ├── httpServer.cjs     # HTTP utilities (testable)
+│   │   └── config.cjs         # Configuration utilities (testable)
+│   ├── preload/               # Preload scripts
+│   │   └── index.cjs          # Context bridge & IPC
+│   └── renderer/              # UI/Frontend
+│       ├── waiting.html       # Waiting page
+│       ├── titlebar.js        # Custom titlebar
+│       └── titlebar.css       # Titlebar styles
+├── tests/                     # Unit & integration tests
 │   ├── httpServer.test.js
 │   ├── config.test.js
 │   ├── preload.test.js
 │   └── integration.test.js
-├── .env                  # Environment variables (SECRET_CODE)
-├── .env.example          # Example environment file
+├── assets/                    # Static resources
+│   └── icon.ico
+├── .github/workflows/         # CI/CD
+│   └── ci.yml
+├── .env                       # Environment variables
+├── .env.example
 ├── package.json
-└── icon.ico
+├── README.md
+└── CLAUDE.md
 ```
 
 ## Commands
@@ -55,7 +63,7 @@ npm run pack          # Build unpacked directory (for debugging)
 ```
 ┌─────────────┐    HTTP API    ┌──────────────────┐    WebSocket    ┌─────────────┐
 │    DayZ     │ ◄────────────► │  Electron App    │ ◄─────────────► │ VoIP Server │
-│   (Game)    │   localhost    │  (main.cjs)      │                 │  (WebRTC)   │
+│   (Game)    │   localhost    │  (src/main)      │                 │  (WebRTC)   │
 └─────────────┘                └──────────────────┘                 └─────────────┘
 ```
 
@@ -68,7 +76,7 @@ npm run pack          # Build unpacked directory (for debugging)
 
 ## Key Modules
 
-### lib/httpServer.cjs
+### src/main/httpServer.cjs
 Testable HTTP utilities:
 - `findFreePort(startPort)` - Find available port
 - `parseJSONBody(req)` - Parse HTTP request body
@@ -78,7 +86,7 @@ Testable HTTP utilities:
 - `sendJSON(res, status, data)` - Send JSON response
 - `getConnectionStatus(serverURL, mainWindow)` - Get app status
 
-### lib/config.cjs
+### src/main/config.cjs
 Configuration utilities:
 - `loadEnvFile(path)` - Parse .env file
 - `applyEnv(env)` - Apply to process.env
@@ -120,20 +128,20 @@ Configuration utilities:
 ## Environment Variables
 
 ```env
-SECRET_CODE=dayz  # Konami code for manual connection
+SECRET_CODE=iamradiovoip  # Konami code for manual connection
 ```
 
 ## Code Conventions
 
 - Use CommonJS (`require`/`module.exports`) for Electron compatibility
-- Keep business logic in `lib/` modules for testability
+- Keep business logic in `src/main/` modules for testability
 - All HTTP responses use `sendJSON()` helper
 - Frequencies are converted to strings for server compatibility
 - earSide values: `0` = Left, `1` = Right, `2` = Both
 
 ## Testing Guidelines
 
-- Unit tests in `__tests__/` directory
+- Unit tests in `tests/` directory
 - Mock Electron modules when testing preload
 - Use `createMockRequest/Response` helpers for HTTP tests
 - Integration tests use real HTTP server on random port
@@ -141,8 +149,15 @@ SECRET_CODE=dayz  # Konami code for manual connection
 ## Build Notes
 
 - Output: `dist/RadioVoIP-DayZ.exe` (portable)
-- Excluded from build: `__tests__/`, `coverage/`, `*.test.js`
+- Excluded from build: `tests/`, `coverage/`, `*.test.js`
 - DevTools disabled in production (`isDev = !app.isPackaged`)
+
+## CI/CD
+
+GitHub Actions workflow (`.github/workflows/ci.yml`):
+- **test**: Run tests on ubuntu-latest
+- **build**: Build on windows-latest (after tests pass)
+- **release**: Create draft release with changelog (on push to main)
 
 ## Hidden Features
 

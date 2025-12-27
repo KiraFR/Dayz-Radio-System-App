@@ -12,7 +12,7 @@ const {
     saveConfig,
     readConfig,
     deleteConfig
-} = require("../lib/config.cjs");
+} = require("../src/main/config.cjs");
 
 // Test directory for file operations
 const TEST_DIR = path.join(os.tmpdir(), "radio-voip-tests-" + Date.now());
