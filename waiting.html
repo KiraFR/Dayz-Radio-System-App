@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio VoIP DayZ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+
+        p {
+            font-size: 16px;
+            color: #b0b0b0;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 15px 25px;
+            background: rgba(233, 69, 96, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #e94560;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 30px;
+            min-width: 350px;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal h2 {
+            color: #e94560;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .modal label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b0b0b0;
+            font-size: 14px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .modal input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-connect {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .btn-connect:hover {
+            background: #d63850;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #b0b0b0;
+        }
+
+        .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📻</div>
+        <h1>Radio VoIP DayZ</h1>
+        <p>En attente de connexion...</p>
+        <p>Connectez-vous a un serveur DayZ pour activer la radio.</p>
+        
+        <div class="status">
+            <span class="status-dot"></span>
+            En attente du serveur de jeu
+        </div>
+    </div>
+
+    <!-- Modal connexion manuelle -->
+    <div class="modal-overlay" id="urlModal">
+        <div class="modal">
+            <h2>Connexion manuelle</h2>
+            <label for="serverUrl">URL du serveur</label>
+            <input type="text" id="serverUrl" placeholder="http://server:port">
+            <div class="modal-buttons">
+                <button class="btn-cancel" id="btnCancel">Annuler</button>
+                <button class="btn-connect" id="btnConnect">Connexion</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Code secret depuis variable d'environnement (injecté par Electron)
+        const SECRET_CODE = (window.SECRET_CODE || 'dayz').toLowerCase();
+        
+        let secretIndex = 0;
+        const modal = document.getElementById('urlModal');
+        const urlInput = document.getElementById('serverUrl');
+        const btnConnect = document.getElementById('btnConnect');
+        const btnCancel = document.getElementById('btnCancel');
+
+        // Detection du code secret
+        document.addEventListener('keydown', (e) => {
+            // Ne pas detecter si le modal est ouvert
+            if (modal.classList.contains('show')) return;
+
+            const key = e.key.toLowerCase();
+            
+            if (key === SECRET_CODE[secretIndex]) {
+                secretIndex++;
+                if (secretIndex === SECRET_CODE.length) {
+                    secretIndex = 0;
+                    showModal();
+                }
+            } else {
+                secretIndex = 0;
+                if (key === SECRET_CODE[0]) {
+                    secretIndex = 1;
+                }
+            }
+        });
+
+        function showModal() {
+            modal.classList.add('show');
+            urlInput.value = '';
+            urlInput.focus();
+        }
+
+        function hideModal() {
+            modal.classList.remove('show');
+            secretIndex = 0;
+        }
+
+        function connect() {
+            let url = urlInput.value.trim();
+            if (!url) return;
+            
+            // Ajouter le protocole si manquant
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+            }
+            
+            window.location.href = url;
+        }
+
+        btnConnect.addEventListener('click', connect);
+        btnCancel.addEventListener('click', hideModal);
+
+        urlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                connect();
+            } else if (e.key === 'Escape') {
+                hideModal();
+            }
+        });
+
+        // Fermer le modal en cliquant a l'exterieur
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideModal();
+            }
+        });
+    </script>
+</body>
+</html>
