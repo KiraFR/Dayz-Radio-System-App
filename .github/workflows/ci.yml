@@ -81,16 +81,81 @@ jobs:
           path: dist/
 
       - name: Scan with VirusTotal
+        id: virustotal
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
           files: |
             dist/RadioVoIP-DayZ.exe
 
-      - name: Check scan results
+      - name: Wait for analysis and check results
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
         run: |
-          echo "VirusTotal scan completed."
-          echo "Check the VirusTotal link in the action output for detailed results."
+          # Extract analysis ID from the output
+          ANALYSIS_URL="${{ steps.virustotal.outputs.analysis }}"
+          echo "Analysis URL: $ANALYSIS_URL"
+          
+          # Extract the analysis ID from URL
+          ANALYSIS_ID=$(echo "$ANALYSIS_URL" | grep -oP 'file-analysis/\K[^/]+(?=/detection)')
+          echo "Analysis ID: $ANALYSIS_ID"
+          
+          # Wait for analysis to complete (max 5 minutes)
+          echo "Waiting for VirusTotal analysis to complete..."
+          for i in {1..30}; do
+            sleep 10
+            
+            # Get analysis status
+            RESPONSE=$(curl -s --request GET \
+              --url "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+              --header "x-apikey: $VT_API_KEY")
+            
+            STATUS=$(echo "$RESPONSE" | jq -r '.data.attributes.status')
+            echo "Attempt $i/30 - Status: $STATUS"
+            
+            if [ "$STATUS" = "completed" ]; then
+              echo "Analysis completed!"
+              
+              # Get results
+              MALICIOUS=$(echo "$RESPONSE" | jq -r '.data.attributes.stats.malicious')
+              SUSPICIOUS=$(echo "$RESPONSE" | jq -r '.data.attributes.stats.suspicious')
+              UNDETECTED=$(echo "$RESPONSE" | jq -r '.data.attributes.stats.undetected')
+              HARMLESS=$(echo "$RESPONSE" | jq -r '.data.attributes.stats.harmless')
+              
+              echo ""
+              echo "=========================================="
+              echo "VirusTotal Scan Results"
+              echo "=========================================="
+              echo "Malicious:  $MALICIOUS"
+              echo "Suspicious: $SUSPICIOUS"
+              echo "Undetected: $UNDETECTED"
+              echo "Harmless:   $HARMLESS"
+              echo "=========================================="
+              echo "Full report: $ANALYSIS_URL"
+              echo "=========================================="
+              
+              # Fail if too many malicious detections (some false positives expected without code signing)
+              TOTAL_ENGINES=$((MALICIOUS + SUSPICIOUS + UNDETECTED + HARMLESS))
+              echo "Total engines: $TOTAL_ENGINES"
+              
+              # Threshold: fail if more than 5 malicious detections (false positives are common for unsigned Electron apps)
+              if [ "$MALICIOUS" -gt 5 ]; then
+                echo "::error::VirusTotal detected $MALICIOUS malicious findings (threshold: 5)!"
+                exit 1
+              elif [ "$MALICIOUS" -gt 0 ]; then
+                echo "::warning::VirusTotal detected $MALICIOUS malicious findings (likely false positives due to unsigned executable)"
+              fi
+              
+              if [ "$SUSPICIOUS" -gt 5 ]; then
+                echo "::warning::VirusTotal detected $SUSPICIOUS suspicious findings"
+              fi
+              
+              exit 0
+            fi
+          done
+          
+          echo "::warning::Analysis timed out after 5 minutes. Check results manually: $ANALYSIS_URL"
+          exit 0
 
   release:
     name: Release

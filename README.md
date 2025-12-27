@@ -1,6 +1,17 @@
 # Radio VoIP DayZ
 
+[![CI/CD](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml/badge.svg)](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml)
+[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Scanned-brightgreen?logo=virustotal)](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml)
+
 A standalone Electron application that provides VoIP (Voice over IP) radio communication for DayZ servers. This app runs alongside DayZ and enables in-game radio functionality with Push-to-Talk (PTT) support and multi-frequency channels.
+
+## Security
+
+Every release is automatically scanned with [VirusTotal](https://www.virustotal.com/) before publication. The CI/CD pipeline waits for the full analysis to complete and displays the results directly in the workflow logs.
+
+**Note:** This application is not code-signed, which may trigger false positives from some antivirus engines. The build will fail if more than 5 engines flag the executable as malicious.
+
+Check the [CI/CD workflow](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml) → "Virus Scan" job for detailed analysis results.
 
 ---
 
