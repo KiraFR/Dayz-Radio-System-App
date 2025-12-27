@@ -58,6 +58,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create .env file
+        run: |
+          echo "SECRET_CODE=${{ secrets.SECRET_CODE }}" > .env
+
       - name: Build Electron app
         run: npm run build
 
@@ -138,6 +142,10 @@ jobs:
               TOTAL_ENGINES=$((MALICIOUS + SUSPICIOUS + UNDETECTED + HARMLESS))
               echo "Total engines: $TOTAL_ENGINES"
               
+              # Set outputs for badge
+              echo "malicious=$MALICIOUS" >> $GITHUB_OUTPUT
+              echo "total=$TOTAL_ENGINES" >> $GITHUB_OUTPUT
+              
               # Threshold: fail if more than 5 malicious detections (false positives are common for unsigned Electron apps)
               if [ "$MALICIOUS" -gt 5 ]; then
                 echo "::error::VirusTotal detected $MALICIOUS malicious findings (threshold: 5)!"
@@ -156,6 +164,18 @@ jobs:
           
           echo "::warning::Analysis timed out after 5 minutes. Check results manually: $ANALYSIS_URL"
           exit 0
+        id: vt_results
+
+      - name: Update VirusTotal badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.VIRUSTOTAL_GIST_ID }}
+          filename: virustotal-badge.json
+          label: VirusTotal
+          message: ${{ steps.vt_results.outputs.malicious }}/${{ steps.vt_results.outputs.total }} scanned
+          color: ${{ steps.vt_results.outputs.malicious == '0' && 'brightgreen' || steps.vt_results.outputs.malicious <= '5' && 'yellow' || 'red' }}
 
   release:
     name: Release

@@ -1,7 +1,7 @@
 # Radio VoIP DayZ
 
 [![CI/CD](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml/badge.svg)](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml)
-[![VirusTotal Scan](https://img.shields.io/badge/VirusTotal-Scanned-brightgreen?logo=virustotal)](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml)
+[![VirusTotal](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/KiraFR/90562d429a3526fd4a110a29cf064bbe/raw/virustotal-badge.json&logo=virustotal)](https://github.com/KiraFR/Dayz-Radio-System-App/actions/workflows/ci.yml)
 
 A standalone Electron application that provides VoIP (Voice over IP) radio communication for DayZ servers. This app runs alongside DayZ and enables in-game radio functionality with Push-to-Talk (PTT) support and multi-frequency channels.
 
@@ -139,6 +139,30 @@ Create a `.env` file in the project root (see `.env.example`):
 ```env
 SECRET_CODE=iamradiovoip  # Konami code to open manual connection modal
 ```
+
+### GitHub Secrets (for CI/CD)
+
+Configure these secrets in your repository settings (`Settings → Secrets and variables → Actions`):
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `SECRET_CODE` | Yes | Konami code for manual connection modal (e.g., `iamradiovoip`) |
+| `VIRUSTOTAL_API_KEY` | Yes | API key from [VirusTotal](https://www.virustotal.com/) for malware scanning |
+| `GIST_TOKEN` | Yes | GitHub PAT with `gist` scope for updating the VirusTotal badge |
+| `RELEASE_TOKEN` | No | GitHub PAT for creating releases (falls back to `GITHUB_TOKEN`) |
+
+**Repository Variables** (`Settings → Secrets and variables → Actions → Variables`):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VIRUSTOTAL_GIST_ID` | Yes | ID of the gist used for the dynamic VirusTotal badge |
+
+> **Setup for VirusTotal badge:**
+> 1. Create a new [GitHub Gist](https://gist.github.com/) (can be empty, name it `virustotal-badge.json`)
+> 2. Copy the Gist ID from the URL (e.g., `https://gist.github.com/KiraFR/abc123` → `abc123`)
+> 3. Add it as repository variable `VIRUSTOTAL_GIST_ID`
+> 4. Create a PAT with `gist` scope and add it as secret `GIST_TOKEN`
+> 5. Update the badge URL in README.md with your Gist ID
 
 ### IPC Events (Renderer ↔ Main)
 
