@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const http = require("http");
-const crypto = require("crypto");
 
 // Import modules
 const { loadEnvFile, applyEnv, saveConfig, getDefaultConfigPath } = require("./config.cjs");
@@ -24,9 +23,6 @@ applyEnv(envVars);
 let serverURL = null; // Sera défini par DayZ
 let authToken = null; // Token d'authentification signé, fourni par DayZ via /connect
 const SECRET_CODE = process.env.SECRET_CODE || "dayz";
-// Secret de build injecté dans le build OFFICIEL (via .env non commité au moment du build).
-// Absent des sources publiques : un fork recompilé ne peut pas produire d'attestation valide.
-const CLIENT_BUILD_SECRET = process.env.CLIENT_BUILD_SECRET || "";
 const isDev = !app.isPackaged;
 
 // Config DayZ
@@ -412,16 +408,6 @@ app.on("window-all-closed", () => {
 ipcMain.handle("get-server-url", () => serverURL);
 ipcMain.handle("get-http-port", () => httpPort);
 ipcMain.handle("get-auth-token", () => authToken);
-
-// Build attestation: HMAC over `${t}:${token}` with the build secret. Proves this is the
-// official build. Returns null when no secret is baked in (attestation disabled).
-ipcMain.handle("get-client-attestation", () => {
-	if (!CLIENT_BUILD_SECRET) return null;
-	const t = Date.now();
-	const token = authToken || "";
-	const sig = crypto.createHmac("sha256", CLIENT_BUILD_SECRET).update(`${t}:${token}`).digest("hex");
-	return { t, sig };
-});
 
 // Window controls
 ipcMain.on("window-minimize", () => {
