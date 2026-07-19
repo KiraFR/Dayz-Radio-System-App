@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
 	// Get configuration
 	getServerURL: () => ipcRenderer.invoke("get-server-url"),
+	getAuthToken: () => ipcRenderer.invoke("get-auth-token"),
 
 	// Window controls
 	minimize: () => ipcRenderer.send("window-minimize"),
