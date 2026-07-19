@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const http = require("http");
+const crypto = require("crypto");
 
 // Import modules
 const { loadEnvFile, applyEnv, saveConfig, getDefaultConfigPath } = require("./config.cjs");
@@ -23,10 +24,39 @@ applyEnv(envVars);
 let serverURL = null; // Sera défini par DayZ
 let authToken = null; // Token d'authentification signé, fourni par DayZ via /connect
 const SECRET_CODE = process.env.SECRET_CODE || "dayz";
+// Secret de build injecté dans le build OFFICIEL (via .env non commité au moment du build).
+// Absent des sources publiques : un fork recompilé ne peut pas produire d'attestation valide.
+const CLIENT_BUILD_SECRET = process.env.CLIENT_BUILD_SECRET || "";
 const isDev = !app.isPackaged;
 
 // Config DayZ
 const CONFIG_FILE = getDefaultConfigPath();
+
+// Optional allowlist of server hosts (comma-separated), e.g. "radio.example.com".
+// When set, only these hosts may be loaded — defends against a rogue local process
+// pushing an arbitrary URL to /connect. When empty, only the protocol is enforced.
+const ALLOWED_SERVER_HOSTS = (process.env.ALLOWED_SERVER_HOSTS || "")
+	.split(",")
+	.map((h) => h.trim().toLowerCase())
+	.filter(Boolean);
+
+// Validate a server URL before ever handing it to loadURL().
+// Only http/https are allowed (blocks file:, javascript:, data:, etc.).
+function isAllowedServerURL(rawUrl) {
+	let parsed;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		return false;
+	}
+	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+		return false;
+	}
+	if (ALLOWED_SERVER_HOSTS.length > 0) {
+		return ALLOWED_SERVER_HOSTS.includes(parsed.hostname.toLowerCase());
+	}
+	return true;
+}
 
 let mainWindow = null;
 let isPTTPressed = false;
@@ -127,16 +157,21 @@ async function startLocalServer() {
 			} else if (url === "/connect" && req.method === "POST") {
 				const data = await parseJSONBody(req);
 				if (data.url) {
+					if (!isAllowedServerURL(data.url)) {
+						console.warn("[HTTP] Rejected /connect to disallowed URL:", data.url);
+						sendJSON(res, 400, { error: "URL not allowed" });
+						return;
+					}
 					serverURL = data.url;
 					// Optional signed auth token minted by the VoIP server and relayed by DayZ.
 					authToken = (typeof data.token === "string" && data.token) ? data.token : null;
 					lastHeartbeat = Date.now();
 					console.log("[HTTP] Connect to:", serverURL, authToken ? "(with token)" : "(no token)");
-					
+
 					if (mainWindow) {
 						mainWindow.loadURL(serverURL);
 					}
-					
+
 					sendJSON(res, 200, { success: true, url: serverURL });
 				} else {
 					sendJSON(res, 400, { error: "Missing url parameter" });
@@ -288,10 +323,44 @@ function createWindow() {
 			preload: path.join(__dirname, "../preload/index.cjs"),
 			contextIsolation: true,
 			nodeIntegration: false,
+			sandbox: true,
 			devTools: isDev,
 		},
 		autoHideMenuBar: true,
 		backgroundColor: "#0d0d1a",
+	});
+
+	// Block navigation to anywhere other than the loaded server URL / local waiting page.
+	// A remote page cannot redirect the shell to an attacker-controlled origin.
+	// Origins are compared exactly (string prefix would let radio.example.com.evil.com pass).
+	mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
+		let target;
+		try {
+			target = new URL(targetUrl);
+		} catch {
+			event.preventDefault();
+			return;
+		}
+		if (target.protocol === "file:") return; // waiting.html
+		if (isDev && target.origin === "http://localhost:3001") return;
+		let allowedOrigin = null;
+		if (serverURL) {
+			try { allowedOrigin = new URL(serverURL).origin; } catch { allowedOrigin = null; }
+		}
+		if (!allowedOrigin || target.origin !== allowedOrigin) {
+			console.warn("[Security] Blocked navigation to:", targetUrl);
+			event.preventDefault();
+		}
+	});
+
+	// Never open new windows / external browsers from the loaded page.
+	mainWindow.webContents.setWindowOpenHandler(() => {
+		return { action: "deny" };
+	});
+
+	// Only grant the microphone permission; deny everything else (geolocation, etc.).
+	mainWindow.webContents.session.setPermissionRequestHandler((wc, permission, callback) => {
+		callback(permission === "media");
 	});
 
 	if (isDev) {
@@ -343,6 +412,16 @@ app.on("window-all-closed", () => {
 ipcMain.handle("get-server-url", () => serverURL);
 ipcMain.handle("get-http-port", () => httpPort);
 ipcMain.handle("get-auth-token", () => authToken);
+
+// Build attestation: HMAC over `${t}:${token}` with the build secret. Proves this is the
+// official build. Returns null when no secret is baked in (attestation disabled).
+ipcMain.handle("get-client-attestation", () => {
+	if (!CLIENT_BUILD_SECRET) return null;
+	const t = Date.now();
+	const token = authToken || "";
+	const sig = crypto.createHmac("sha256", CLIENT_BUILD_SECRET).update(`${t}:${token}`).digest("hex");
+	return { t, sig };
+});
 
 // Window controls
 ipcMain.on("window-minimize", () => {
