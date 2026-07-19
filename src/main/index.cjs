@@ -21,6 +21,7 @@ applyEnv(envVars);
 
 // Configuration
 let serverURL = null; // Sera défini par DayZ
+let authToken = null; // Token d'authentification signé, fourni par DayZ via /connect
 const SECRET_CODE = process.env.SECRET_CODE || "dayz";
 const isDev = !app.isPackaged;
 
@@ -47,6 +48,7 @@ function disconnect(reason) {
 	
 	// Reset état
 	serverURL = null;
+	authToken = null;
 	lastHeartbeat = null;
 	
 	// Revenir à la page d'attente
@@ -126,8 +128,10 @@ async function startLocalServer() {
 				const data = await parseJSONBody(req);
 				if (data.url) {
 					serverURL = data.url;
+					// Optional signed auth token minted by the VoIP server and relayed by DayZ.
+					authToken = (typeof data.token === "string" && data.token) ? data.token : null;
 					lastHeartbeat = Date.now();
-					console.log("[HTTP] Connect to:", serverURL);
+					console.log("[HTTP] Connect to:", serverURL, authToken ? "(with token)" : "(no token)");
 					
 					if (mainWindow) {
 						mainWindow.loadURL(serverURL);
@@ -338,6 +342,7 @@ app.on("window-all-closed", () => {
 // IPC handlers
 ipcMain.handle("get-server-url", () => serverURL);
 ipcMain.handle("get-http-port", () => httpPort);
+ipcMain.handle("get-auth-token", () => authToken);
 
 // Window controls
 ipcMain.on("window-minimize", () => {
